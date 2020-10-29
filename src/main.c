@@ -38,3 +38,8 @@ void vApplicationMallocFailedHook(void)
 {
   configASSERT(0);
 }
+
+void HardFault_Handler(void)
+{
+  configASSERT(0);
+}
