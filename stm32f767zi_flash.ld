@@ -1,51 +1,24 @@
-/*
-*****************************************************************************
-**
-
-**  File        : stm32_flash.ld
-**
-**  Abstract    : Linker script for STM32F767ZI Device with
-**                2048KByte FLASH, 512KByte RAM
-**
-**                Set heap size, stack size and stack location according
-**                to application requirements.
-**
-**                Set memory bank area and size if external memory is used.
-**
-**  Target      : STMicroelectronics STM32
-**
-**  Environment : Atollic TrueSTUDIO(R)
-**
-**  Distribution: The file is distributed as is, without any warranty
-**                of any kind.
-**
-**  (c)Copyright Atollic AB.
-**  You may use this file as-is or modify it according to the needs of your
-**  project. This file may only be built (assembled or compiled and linked)
-**  using the Atollic TrueSTUDIO(R) product. The use of this file together
-**  with other tools than Atollic TrueSTUDIO(R) is not permitted.
-**
-*****************************************************************************
-*/
-
 /* Entry Point */
 ENTRY(Reset_Handler)
 
 /* Highest address of the user mode stack */
-_estack = 0x20080000;    /* end of RAM */
+/* end of RAM */
+_estack = 0x20080000;
 /* Generate a link error if heap and stack don't fit into RAM */
-_Min_Heap_Size = 0x800;      /* required amount of heap  */
-_Min_Stack_Size = 0x1000; /* required amount of stack */
+/* required amount of heap  */
+_Min_Heap_Size = 0x800;
+/* required amount of stack */
+_Min_Stack_Size = 0x1000;
 
 /* Specify the memory areas */
 MEMORY
 {
-FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 2048K
-RAM (xrw)        : ORIGIN = 0x20000000, LENGTH = 499K
-Memory_B1(xrw)   : ORIGIN = 0x2007C000, LENGTH = 0x80
-Memory_B2(xrw)   : ORIGIN = 0x2007C080, LENGTH = 0x80
-Memory_B3(xrw)   : ORIGIN = 0x2007C100, LENGTH = 0x17d0 
-Memory_B4(xrw)   : ORIGIN = 0x2007D8D0, LENGTH = 0x17d0
+  FLASH (rx)       : ORIGIN = 0x8000000,  LENGTH = 2048K
+  RAM (xrw)        : ORIGIN = 0x20000000, LENGTH = 499K
+  Memory_B1(xrw)   : ORIGIN = 0x2007C000, LENGTH = 0x80
+  Memory_B2(xrw)   : ORIGIN = 0x2007C080, LENGTH = 0x80
+  Memory_B3(xrw)   : ORIGIN = 0x2007C100, LENGTH = 0x17d0 
+  Memory_B4(xrw)   : ORIGIN = 0x2007D8D0, LENGTH = 0x17d0
 }
 
 /* Define output sections */
@@ -63,25 +36,32 @@ SECTIONS
   .text :
   {
     . = ALIGN(4);
-    *(.text)           /* .text sections (code) */
-    *(.text*)          /* .text* sections (code) */
-    *(.glue_7)         /* glue arm to thumb code */
-    *(.glue_7t)        /* glue thumb to arm code */
+    /* .text sections (code) */
+    *(.text)
+    /* .text* sections (code) */
+    *(.text*)
+    /* glue arm to thumb code */
+    *(.glue_7)
+    /* glue thumb to arm code */
+    *(.glue_7t)
     *(.eh_frame)
 
     KEEP (*(.init))
     KEEP (*(.fini))
 
     . = ALIGN(4);
-    _etext = .;        /* define a global symbols at end of code */
+    /* define a global symbols at end of code */
+    _etext = .;
   } >FLASH
 
   /* Constant data goes into FLASH */
   .rodata :
   {
     . = ALIGN(4);
-    *(.rodata)         /* .rodata sections (constants, strings, etc.) */
-    *(.rodata*)        /* .rodata* sections (constants, strings, etc.) */
+    /* .rodata sections (constants, strings, etc.) */
+    *(.rodata)
+    /* .rodata* sections (constants, strings, etc.) */
+    *(.rodata*)
     . = ALIGN(4);
   } >FLASH
 
@@ -120,28 +100,33 @@ SECTIONS
   .data : 
   {
     . = ALIGN(4);
-    _sdata = .;        /* create a global symbol at data start */
-    *(.data)           /* .data sections */
-    *(.data*)          /* .data* sections */
+    /* create a global symbol at data start */
+    _sdata = .;
+    /* .data sections */
+    *(.data)
+    /* .data* sections */
+    *(.data*)
 
     . = ALIGN(4);
-    _edata = .;        /* define a global symbol at data end */
+    /* define a global symbol at data end */
+    _edata = .;
   } >RAM AT> FLASH
 
-  
   /* Uninitialized data section */
   . = ALIGN(4);
   .bss :
   {
     /* This is used by the startup in order to initialize the .bss secion */
-    _sbss = .;         /* define a global symbol at bss start */
+    _sbss = .;
+    /* define a global symbol at bss start */
     __bss_start__ = _sbss;
     *(.bss)
     *(.bss*)
     *(COMMON)
 
     . = ALIGN(4);
-    _ebss = .;         /* define a global symbol at bss end */
+    _ebss = .;
+    /* define a global symbol at bss end */
     __bss_end__ = _ebss;
   } >RAM
 
@@ -167,8 +152,8 @@ SECTIONS
   }
 
   .ARM.attributes 0 : { *(.ARM.attributes) }
-  .RxDecripSection (NOLOAD) : { *(.RxDescripSection) } >Memory_B1
-  .TxDescripSection (NOLOAD) : { *(.DMATxDscrTab_section) } >Memory_B2
-  .RxarraySection (NOLOAD) : { *(.RxBUF) } >Memory_B3
-  .TxarraySection (NOLOAD) : { *(.TxBUF) } >Memory_B4 
+  .tstRxDMADescSection (NOLOAD) : { *(.RxDescSection)   } >Memory_B1
+  .tstTxDMADescSection (NOLOAD) : { *(.TxDescSection)   } >Memory_B2
+  .tu08RxBufferSection (NOLOAD) : { *(.RxBufferSection) } >Memory_B3
+  .tu08TxBufferSection (NOLOAD) : { *(.TxBufferSection) } >Memory_B4
 }
