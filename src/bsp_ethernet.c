@@ -1,40 +1,77 @@
-#include "stm32f7xx_hal.h"
+#include "bsp_ethernet.h"
 
-/* Global Ethernet handle*/
-ETH_HandleTypeDef stEthernetHandle;
-/* Ethernet Rx DMA Descriptors */
-ETH_DMADescTypeDef tstRxDMADesc[ETH_RXBUFNB] __attribute__((section(".tstRxDMADescSection")));
-/* Ethernet Tx DMA Descriptors */
-ETH_DMADescTypeDef tstTxDMADesc[ETH_TXBUFNB] __attribute__((section(".tstTxDMADescSection")));
-/* Ethernet Receive Buffers */
-uint8_t tu08RxBuffer[ETH_RXBUFNB][ETH_RX_BUF_SIZE] __attribute__((section(".tu08RxBufferSection"))); 
-/* Ethernet Transmit Buffers */
-uint8_t tu08TxBuffer[ETH_TXBUFNB][ETH_TX_BUF_SIZE] __attribute__((section(".tu08TxBufferSection"))); 
+#define MAC_ADDR_0                               2U
+#define MAC_ADDR_1                               0U
+#define MAC_ADDR_2                               0U
+#define MAC_ADDR_3                               0U
+#define MAC_ADDR_4                               0U
+#define MAC_ADDR_5                               0U
+#define ETH_RX_BUFFERS_COUNT                     4U
+#define ETH_TX_BUFFERS_COUNT                     4U
+#define ETH_RX_BUFFER_SIZE                       ETH_MAX_PACKET_SIZE
+#define ETH_TX_BUFFER_SIZE                       ETH_MAX_PACKET_SIZE
+
+typedef struct
+{
+  /* Global Ethernet handle*/
+  ETH_HandleTypeDef stEthernetHandle;
+  /* Ethernet Rx DMA Descriptors */
+  ETH_DMADescTypeDef tstRxDMADesc[ETH_RX_BUFFERS_COUNT];
+  /* Ethernet Tx DMA Descriptors */
+  ETH_DMADescTypeDef tstTxDMADesc[ETH_TX_BUFFERS_COUNT];
+  /* Ethernet Receive Buffers: List of  */
+  uint8_t tu08RxBuffer[ETH_RX_BUFFERS_COUNT][ETH_RX_BUFFER_SIZE];
+  /* Ethernet Transmit Buffers */
+  uint8_t tu08TxBuffer[ETH_TX_BUFFERS_COUNT][ETH_TX_BUFFER_SIZE];
+  /* Ethernet Receive callback */
+  bsp_ethernet_pf_recv_cb_t pf_cb_receive;
+}bsp_ethernet_ctx_t;
+
+/* Ethernet bsp context */
+static bsp_ethernet_ctx_t stCtx;
+
 /* Ethernet MAC address */
-uint8_t tu08MACAddress[6]= { MAC_ADDR0, MAC_ADDR1, MAC_ADDR2, MAC_ADDR3, MAC_ADDR4, MAC_ADDR5 };
+static uint8_t tu08MACAddress[6]= { MAC_ADDR_0,
+                                    MAC_ADDR_1,
+                                    MAC_ADDR_2,
+                                    MAC_ADDR_3,
+                                    MAC_ADDR_4,
+                                    MAC_ADDR_5 };
 
 void bsp_ethernet_init(void)
 {
-  stEthernetHandle.Instance = ETH;  
-  stEthernetHandle.Init.MACAddr = tu08MACAddress;
-  stEthernetHandle.Init.AutoNegotiation = ETH_AUTONEGOTIATION_ENABLE;
-  stEthernetHandle.Init.Speed = ETH_SPEED_100M;
-  stEthernetHandle.Init.DuplexMode = ETH_MODE_FULLDUPLEX;
-  stEthernetHandle.Init.MediaInterface = ETH_MEDIA_INTERFACE_RMII;
-  stEthernetHandle.Init.RxMode = ETH_RXINTERRUPT_MODE;
-  stEthernetHandle.Init.ChecksumMode = ETH_CHECKSUM_BY_HARDWARE;
-  stEthernetHandle.Init.PhyAddress = 1;
+  stCtx.stEthernetHandle.Instance = ETH;
+  stCtx.stEthernetHandle.Init.MACAddr = tu08MACAddress;
+  stCtx.stEthernetHandle.Init.AutoNegotiation = ETH_AUTONEGOTIATION_ENABLE;
+  stCtx.stEthernetHandle.Init.Speed = ETH_SPEED_100M;
+  stCtx.stEthernetHandle.Init.DuplexMode = ETH_MODE_FULLDUPLEX;
+  stCtx.stEthernetHandle.Init.MediaInterface = ETH_MEDIA_INTERFACE_RMII;
+  stCtx.stEthernetHandle.Init.RxMode = ETH_RXINTERRUPT_MODE;
+  stCtx.stEthernetHandle.Init.ChecksumMode = ETH_CHECKSUM_BY_HARDWARE;
+  stCtx.stEthernetHandle.Init.PhyAddress = 1;
   /* configure ethernet peripheral (GPIOs, clocks, MAC, DMA) */
-  if(HAL_OK == HAL_ETH_Init(&stEthernetHandle))
+  if(HAL_OK == HAL_ETH_Init(&stCtx.stEthernetHandle))
   {
     /* Set netif link flag */
+    __NOP();
   }
   /* Initialize Tx Descriptors list: Chain Mode */
-  HAL_ETH_DMATxDescListInit(&stEthernetHandle, tstTxDMADesc, &tu08TxBuffer[0][0], ETH_TXBUFNB);
+  HAL_ETH_DMATxDescListInit(&stCtx.stEthernetHandle,
+                            stCtx.tstTxDMADesc,
+                            &stCtx.tu08TxBuffer[0][0],
+                            ETH_RX_BUFFERS_COUNT);
   /* Initialize Rx Descriptors list: Chain Mode  */
-  HAL_ETH_DMARxDescListInit(&stEthernetHandle, tstRxDMADesc, &tu08RxBuffer[0][0], ETH_RXBUFNB);
+  HAL_ETH_DMARxDescListInit(&stCtx.stEthernetHandle,
+                            stCtx.tstRxDMADesc,
+                            &stCtx.tu08RxBuffer[0][0],
+                            ETH_RX_BUFFERS_COUNT);
   /* Enable MAC and DMA transmission and reception */
-  HAL_ETH_Start(&stEthernetHandle);
+  HAL_ETH_Start(&stCtx.stEthernetHandle);
+}
+
+void bsp_ethernet_register_cb(bsp_ethernet_pf_recv_cb_t pf_cb)
+{
+  stCtx.pf_cb_receive = pf_cb;
 }
 
 void HAL_ETH_MspInit(ETH_HandleTypeDef *pstHandle)
@@ -73,9 +110,10 @@ void HAL_ETH_MspInit(ETH_HandleTypeDef *pstHandle)
 
 void ETH_IRQHandler(void)
 {
-  HAL_ETH_IRQHandler(&stEthernetHandle);
+  HAL_ETH_IRQHandler(&stCtx.stEthernetHandle);
 }
 
 void HAL_ETH_RxCpltCallback(ETH_HandleTypeDef *pstHandle)
 {
+  stCtx.pf_cb_receive(pstHandle);
 }

@@ -5,6 +5,7 @@
 
 static void thread_led(void const *pvArg);
 static void thread_ethernet(void const *pvArg);
+static void ethernet_receive_cb(ETH_HandleTypeDef *pstHandle);
 
 osThreadId stLedThreadHandle;
 osThreadId stEthThreadHandle;
@@ -37,10 +38,17 @@ static void thread_led(void const *pvArg)
 static void thread_ethernet(void const *pvArg)
 {
   bsp_ethernet_init();
+  bsp_ethernet_register_cb(ethernet_receive_cb);
+
   while(1)
   {
     osDelay(1000);
   }
+}
+
+static void ethernet_receive_cb(ETH_HandleTypeDef *pstHandle)
+{
+  osDelay(1000);
 }
 
 void vApplicationStackOverflowHook(osThreadId stThread, signed char *pcThreadName)
