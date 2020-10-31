@@ -54,7 +54,6 @@ void bsp_ethernet_init(void)
   if(HAL_OK != HAL_ETH_Init(&stCtx.stEthernetHandle))
   {
     /* Set netif link flag */
-    asm("BKPT #0");
   }
   /* Initialize Tx Descriptors list: Chain Mode */
   HAL_ETH_DMATxDescListInit(&stCtx.stEthernetHandle,
@@ -69,37 +68,12 @@ void bsp_ethernet_init(void)
   /* Enable MAC and DMA transmission and reception */
   if(HAL_OK != HAL_ETH_Start(&stCtx.stEthernetHandle))
   {
-    asm("BKPT #0");
   }
 }
 
 void bsp_ethernet_register_cb(bsp_ethernet_pf_recv_cb_t pf_cb)
 {
   stCtx.pf_cb_receive = pf_cb;
-}
-
-void bsp_ethernet_transmit(uint8_t *p08Frame, uint32_t u32Length)
-{
-  uint8_t *pu08Buffer = (uint8_t *)(stCtx.stEthernetHandle.TxDesc->Buffer1Addr);
-  __IO ETH_DMADescTypeDef *pstDMATxDesc = stCtx.stEthernetHandle.TxDesc;
-
-  /* 1. check if DMA Tx buffer is available */
-  if((pstDMATxDesc->Status & ETH_DMATXDESC_OWN) == (uint32_t)RESET)
-  {
-    /* 2. copy frame from p08Frame to driver buffers */
-    memcpy(pu08Buffer, p08Frame, u32Length);
-    /* 3. point to next DMA descriptor */
-    pstDMATxDesc = (ETH_DMADescTypeDef *)(pstDMATxDesc->Buffer2NextDescAddr);
-    /* 4. prepare transmit descriptors to give to DMA */
-    if(HAL_OK != HAL_ETH_TransmitFrame(&stCtx.stEthernetHandle, u32Length))
-    {
-      asm("BKPT #0");
-    }
-  }
-  else
-  {
-    asm("BKPT #0");
-  }
 }
 
 ETH_HandleTypeDef bsp_ethernet_get_handle(void)
