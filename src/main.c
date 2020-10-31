@@ -42,13 +42,14 @@ static void thread_ethernet(void const *pvArg)
 
   while(1)
   {
+    bsp_ethernet_transmit((uint8_t *)"hello world!", (sizeof("hello world!")-1));
     osDelay(1000);
   }
 }
 
 static void ethernet_receive_cb(ETH_HandleTypeDef *pstHandle)
 {
-  osDelay(1000);
+  asm("BKPT #0");
 }
 
 void vApplicationStackOverflowHook(osThreadId stThread, signed char *pcThreadName)

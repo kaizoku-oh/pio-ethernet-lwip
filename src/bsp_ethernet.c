@@ -1,4 +1,5 @@
 #include "bsp_ethernet.h"
+#include <string.h>
 
 #define MAC_ADDR_0                               2U
 #define MAC_ADDR_1                               0U
@@ -15,10 +16,10 @@ typedef struct
 {
   /* Global Ethernet handle*/
   ETH_HandleTypeDef stEthernetHandle;
-  /* Ethernet Rx DMA Descriptors */
-  ETH_DMADescTypeDef tstRxDMADesc[ETH_RX_BUFFERS_COUNT];
-  /* Ethernet Tx DMA Descriptors */
-  ETH_DMADescTypeDef tstTxDMADesc[ETH_TX_BUFFERS_COUNT];
+  /* Ethernet Rx DMA Descriptors list */
+  ETH_DMADescTypeDef tstRxDMADescList[ETH_RX_BUFFERS_COUNT];
+  /* Ethernet Tx DMA Descriptors list */
+  ETH_DMADescTypeDef tstTxDMADescList[ETH_TX_BUFFERS_COUNT];
   /* Ethernet Receive Buffers: List of  */
   uint8_t tu08RxBuffer[ETH_RX_BUFFERS_COUNT][ETH_RX_BUFFER_SIZE];
   /* Ethernet Transmit Buffers */
@@ -50,28 +51,60 @@ void bsp_ethernet_init(void)
   stCtx.stEthernetHandle.Init.ChecksumMode = ETH_CHECKSUM_BY_HARDWARE;
   stCtx.stEthernetHandle.Init.PhyAddress = 1;
   /* configure ethernet peripheral (GPIOs, clocks, MAC, DMA) */
-  if(HAL_OK == HAL_ETH_Init(&stCtx.stEthernetHandle))
+  if(HAL_OK != HAL_ETH_Init(&stCtx.stEthernetHandle))
   {
     /* Set netif link flag */
-    __NOP();
+    asm("BKPT #0");
   }
   /* Initialize Tx Descriptors list: Chain Mode */
   HAL_ETH_DMATxDescListInit(&stCtx.stEthernetHandle,
-                            stCtx.tstTxDMADesc,
+                            stCtx.tstTxDMADescList,
                             &stCtx.tu08TxBuffer[0][0],
                             ETH_RX_BUFFERS_COUNT);
   /* Initialize Rx Descriptors list: Chain Mode  */
   HAL_ETH_DMARxDescListInit(&stCtx.stEthernetHandle,
-                            stCtx.tstRxDMADesc,
+                            stCtx.tstRxDMADescList,
                             &stCtx.tu08RxBuffer[0][0],
                             ETH_RX_BUFFERS_COUNT);
   /* Enable MAC and DMA transmission and reception */
-  HAL_ETH_Start(&stCtx.stEthernetHandle);
+  if(HAL_OK != HAL_ETH_Start(&stCtx.stEthernetHandle))
+  {
+    asm("BKPT #0");
+  }
 }
 
 void bsp_ethernet_register_cb(bsp_ethernet_pf_recv_cb_t pf_cb)
 {
   stCtx.pf_cb_receive = pf_cb;
+}
+
+void bsp_ethernet_transmit(uint8_t *p08Frame, uint32_t u32Length)
+{
+  uint8_t *pu08Buffer = (uint8_t *)(stCtx.stEthernetHandle.TxDesc->Buffer1Addr);
+  __IO ETH_DMADescTypeDef *pstDMATxDesc = stCtx.stEthernetHandle.TxDesc;
+
+  /* 1. check if DMA Tx buffer is available */
+  if((pstDMATxDesc->Status & ETH_DMATXDESC_OWN) == (uint32_t)RESET)
+  {
+    /* 2. copy frame from p08Frame to driver buffers */
+    memcpy(pu08Buffer, p08Frame, u32Length);
+    /* 3. point to next DMA descriptor */
+    pstDMATxDesc = (ETH_DMADescTypeDef *)(pstDMATxDesc->Buffer2NextDescAddr);
+    /* 4. prepare transmit descriptors to give to DMA */
+    if(HAL_OK != HAL_ETH_TransmitFrame(&stCtx.stEthernetHandle, u32Length))
+    {
+      asm("BKPT #0");
+    }
+  }
+  else
+  {
+    asm("BKPT #0");
+  }
+}
+
+ETH_HandleTypeDef bsp_ethernet_get_handle(void)
+{
+  return stCtx.stEthernetHandle;
 }
 
 void HAL_ETH_MspInit(ETH_HandleTypeDef *pstHandle)
